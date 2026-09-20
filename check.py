@@ -24,25 +24,9 @@ class Fuel(enum.StrEnum):
     Unleaded95E5 = 'SP95'
     Unleaded98E5 = 'SP98'
 
-    @property
-    def id(self) -> int:
-        match self:
-            case self.Diesel:
-                return 1
-            case self.Unleaded95E5:
-                return 2
-            case self.E85:
-                return 3
-            case self.Lpg:
-                return 4
-            case self.Unleaded95E10:
-                return 5
-            case self.Unleaded98E5:
-                return 6
-
 
 def fetch_feed() -> etree.ElementTree:
-    logging.info('Fetching feed...')
+    logging.info('Récupération du flux...')
 
     request = Request(
         'https://donnees.roulez-eco.fr/opendata/instantane_ruptures',
@@ -63,30 +47,30 @@ def fetch_feed() -> etree.ElementTree:
 
 
 def load_config() -> Dict[str, Any]:
-    logging.info('Loading configuration...')
+    logging.info('Chargement de la configuration...')
 
     try:
         with open(Path(__file__).parent / 'config.toml', 'rb') as f:
             config = tomllib.load(f)
     except FileNotFoundError:
-        logging.critical('config.toml not found, aborting.')
+        logging.critical('config.toml introuvable, abandon.')
 
         sys.exit(1)
 
-    if 'sms' not in config or not config['sms']:
-        logging.critical('No "sms" entry found in config file, aborting.')
+    if 'alerts' not in config or not config['alerts']:
+        logging.critical('Pas d\'entrée "alerts" dans la configuration, abandon.')
 
         sys.exit(1)
-    elif 'api_key' not in config['sms'] or not config['sms']['api_key']:
-        logging.critical('No "api_key" entry found in sms section of the config file, aborting.')
+    elif 'smspartner_api_key' not in config['alerts'] or not config['alerts']['smspartner_api_key']:
+        logging.critical('Pas d\'entrée "smspartner_api_key" dans la section "alerts" de la configuration, abandon.')
 
         sys.exit(1)
-    elif 'recipients' not in config['sms'] or not config['sms']['recipients']:
-        logging.critical('No "recipients" entry found in sms section of the config file, aborting.')
+    elif 'recipients' not in config['alerts'] or not config['alerts']['recipients']:
+        logging.critical('Pas d\'entrée "api_key" dans la section "alerts" de la configuration, abandon.')
 
         sys.exit(1)
     elif 'locations' not in config or not config['locations']:
-        logging.critical('No "locations" entries found in config file, aborting.')
+        logging.critical('Pas d\'entrées "locations" dans la configuration, abandon.')
 
         sys.exit(1)
 
@@ -96,13 +80,16 @@ def load_config() -> Dict[str, Any]:
 
         try:
             if not isinstance(label, str):
-                raise ValueError('missing or invalid label attribute (must be a string)')
+                raise ValueError('"label" manquant ou invalide (doit être un string)')
             elif not isinstance(fuels, list):
-                raise ValueError('missing or invalid fuels attribute (must be an array of strings)')
+                raise ValueError('"fuels" manquant ou invalide (doit être une liste de strings)')
 
-            location['fuels'] = [Fuel(fuel) for fuel in fuels]
+            try:
+                location['fuels'] = [Fuel(fuel) for fuel in fuels]
+            except ValueError:
+                raise ValueError('Une des valeurs de "fuels" est invalide')
         except ValueError as e:
-            logging.error(f'Location {location_id}: {e}, will be ignored')
+            logging.error(f'Location {location_id}: {e} (sera ignoré)')
 
             del config['locations'][location_id]
 
@@ -112,19 +99,19 @@ def load_config() -> Dict[str, Any]:
 
 
 def load_locations_status() -> Dict[str, Dict[int, bool]]:
-    logging.info('Loading statuses...')
+    logging.info('Chargement des statuts...')
 
     try:
         with open(Path(__file__).parent / 'locstatus.json', 'r') as f:
             return json.load(f)
     except FileNotFoundError:
-        logging.info('  Unexisting')
+        logging.info('  Inexistant pour l\'instant')
 
         return {}
 
 
 def save_locations_status(statuses: Dict[str, Dict[int, bool]]) -> None:
-    logging.info('Saving statuses...')
+    logging.info('Sauvegarde des statuts...')
 
     with open(Path(__file__).parent / 'locstatus.json', 'w') as f:
         json.dump(statuses, f)
@@ -146,22 +133,36 @@ def send_sms(alerts_config: Dict[str, Any], message: str) -> None:
 
 def run() -> None:
     config = load_config()
-    statuses = load_locations_status()
+    locations_status = load_locations_status()
     xml = fetch_feed()
 
     for location_node in xml.iter('pdv'):
         location_id = location_node.get('id')
 
-        if location_id not in config['locations']:
+        if not location_id or location_id not in config['locations']:
             continue
 
+        logging.info(f'Vérification de {location_id}...')
+
         location = config['locations'][location_id]
+        statuses = locations_status.get(location_id, {})
 
-        logging.info(f'Checking location {location_id}')
+        for available_fuel_node in location_node.iter('prix'):
+            fuel = available_fuel_node.get('nom')
 
-    save_locations_status(statuses)
+            # TODO Gérer carburant disponible
 
-    logging.info('Done.')
+        for unavailable_fuel_node in location_node.iter('rupture'):
+            if unavailable_fuel_node.get('type') == 'definitive':
+                continue
+
+            fuel = unavailable_fuel_node.get('nom')
+
+            # TODO Gérer carburant indisponible
+
+    save_locations_status(locations_status)
+
+    logging.info('Effectué.')
 
 
 if __name__ == '__main__':
