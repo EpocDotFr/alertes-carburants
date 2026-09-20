@@ -130,12 +130,12 @@ def save_locations_status(statuses: Dict[str, Dict[int, bool]]) -> None:
         json.dump(statuses, f)
 
 
-def send_sms(sms_config: Dict[str, Any], message: str) -> None:
+def send_sms(alerts_config: Dict[str, Any], message: str) -> None:
     urlopen(Request(
         'https://api.smspartner.fr/v1/send',
         data=json.dumps({
-            'apiKey': sms_config['api_key'],
-            'phoneNumbers': sms_config['recipients'].join(','),
+            'apiKey': alerts_config['smspartner_api_key'],
+            'phoneNumbers': alerts_config['recipients'].join(','),
             'message': message,
             'sender': 'AlertesCarburant',
             '_format': 'json',
