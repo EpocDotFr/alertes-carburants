@@ -98,7 +98,7 @@ def load_config() -> Dict[str, Any]:
     return config
 
 
-def load_locations_status() -> Dict[str, Dict[int, bool]]:
+def load_locations_status() -> Dict[str, Dict[str, bool]]:
     logging.info('Chargement des statuts...')
 
     try:
@@ -110,7 +110,7 @@ def load_locations_status() -> Dict[str, Dict[int, bool]]:
         return {}
 
 
-def save_locations_status(statuses: Dict[str, Dict[int, bool]]) -> None:
+def save_locations_status(statuses: Dict[str, Dict[str, bool]]) -> None:
     logging.info('Sauvegarde des statuts...')
 
     with open(Path(__file__).parent / 'locstatus.json', 'w') as f:
@@ -124,7 +124,7 @@ def send_sms(alerts_config: Dict[str, Any], message: str) -> None:
             'apiKey': alerts_config['smspartner_api_key'],
             'phoneNumbers': alerts_config['recipients'].join(','),
             'message': message,
-            'sender': 'AlertesCarburant',
+            'sender': alerts_config.get('sender', 'AlertesCarburant'),
             '_format': 'json',
         }).encode('utf-8'),
         method='POST'
@@ -139,7 +139,15 @@ def run() -> None:
     for location_node in xml.iter('pdv'):
         location_id = location_node.get('id')
 
-        if not location_id or location_id not in config['locations']:
+        if not location_id:
+            continue
+
+        if location_id not in config['locations']:
+            try:
+                del locations_status[location_id]
+            except KeyError:
+                pass
+
             continue
 
         logging.info(f'Vérification de {location_id}...')
@@ -147,18 +155,27 @@ def run() -> None:
         location = config['locations'][location_id]
         statuses = locations_status.get(location_id, {})
 
-        for available_fuel_node in location_node.iter('prix'):
-            fuel = available_fuel_node.get('nom')
+        if location_id not in locations_status:
+            locations_status[location_id] = {}
 
-            # TODO Gérer carburant disponible
+        for available_fuel_node in location_node.iter('prix'):
+            fuel = available_fuel_node.get('nom', '')
+
+            if not statuses.get(fuel, True): # Le carburant était indisponible, et est maintenant disponible
+                logging.info(f'  {fuel} devenu disponible')
+
+                locations_status[location_id][fuel] = True
 
         for unavailable_fuel_node in location_node.iter('rupture'):
             if unavailable_fuel_node.get('type') == 'definitive':
                 continue
 
-            fuel = unavailable_fuel_node.get('nom')
+            fuel = unavailable_fuel_node.get('nom', '')
 
-            # TODO Gérer carburant indisponible
+            if statuses.get(fuel, True): # Le carburant était disponible, et est maintenant indisponible
+                logging.info(f'  {fuel} devenu indisponible')
+
+                locations_status[location_id][fuel] = False
 
     save_locations_status(locations_status)
 
