@@ -11,6 +11,7 @@ import logging
 import json
 import enum
 import sys
+import re
 
 logging.basicConfig(level=logging.INFO)
 
@@ -38,20 +39,19 @@ def load_config() -> Dict[str, Any]:
 
         sys.exit(1)
 
-    if 'alerts' not in config or not config['alerts']:
-        logging.critical('Pas d\'entrée "alerts" dans la configuration, abandon.')
-
-        sys.exit(1)
-    elif 'smspartner_api_key' not in config['alerts'] or not config['alerts']['smspartner_api_key']:
-        logging.critical('Pas d\'entrée "smspartner_api_key" dans la section "alerts" de la configuration, abandon.')
-
-        sys.exit(1)
-    elif 'recipients' not in config['alerts'] or not config['alerts']['recipients']:
-        logging.critical('Pas d\'entrée "api_key" dans la section "alerts" de la configuration, abandon.')
-
-        sys.exit(1)
-    elif 'locations' not in config or not config['locations']:
-        logging.critical('Pas d\'entrées "locations" dans la configuration, abandon.')
+    try:
+        if not isinstance(config.get('alerts'), dict):
+            raise ValueError('Pas de section "alerts" dans la configuration')
+        elif not isinstance(config['alerts'].get('smspartner_api_key'), str):
+            raise ValueError('Pas d\'entrée "smspartner_api_key" dans la section "alerts" de la configuration')
+        elif not isinstance(config['alerts'].get('recipients'), list):
+            raise ValueError('Pas d\'entrée "recipients" dans la section "alerts" de la configuration')
+        elif not isinstance(config.get('locations'), dict):
+            raise ValueError('Pas d\'entrées "locations" dans la configuration')
+        elif 'sender' in config['alerts'] and re.matchall(r'[a-z0-9]{3,11}', config['alerts']['sender']) is None:
+            raise ValueError('"sender" invalide dans la section "alerts" : doit être composé de 3 à 11 caractères exclusivement alphanumériques')
+    except ValueError as e:
+        logging.critical(f'{e} (abandon)')
 
         sys.exit(1)
 
