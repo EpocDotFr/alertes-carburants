@@ -15,7 +15,7 @@ import re
 
 logging.basicConfig(level=logging.INFO)
 
-Alert = TypedDict('Alert', {'fuel': str, 'available': bool})
+Alerts = TypedDict('Alerts', {'available': List[str], 'unavailable': List[str]})
 
 
 @enum.unique
@@ -79,7 +79,7 @@ def load_config() -> Dict[str, Any]:
     return config
 
 
-def create_alerts(config: Dict[str, Any]) -> Dict[str, List[Alert]]:
+def create_alerts(locations_config: Dict[str, Any]) -> Dict[str, Alerts]:
     locations_status = load_locations_status()
     xml = fetch_feed()
     alerts = {}
@@ -90,7 +90,7 @@ def create_alerts(config: Dict[str, Any]) -> Dict[str, List[Alert]]:
         if not location_id:
             continue
 
-        if location_id not in config['locations']:
+        if location_id not in locations_config:
             try:
                 del locations_status[location_id]
             except KeyError:
@@ -100,7 +100,7 @@ def create_alerts(config: Dict[str, Any]) -> Dict[str, List[Alert]]:
 
         logging.info(f'Vérification de {location_id}...')
 
-        location = config['locations'][location_id]
+        location = locations_config[location_id]
         statuses = locations_status.get(location_id, {})
 
         if location_id not in locations_status:
@@ -121,12 +121,12 @@ def create_alerts(config: Dict[str, Any]) -> Dict[str, List[Alert]]:
                 logging.info(f'  {fuel} devenu disponible')
 
                 if location['label'] not in alerts:
-                    alerts[location['label']] = []
+                    alerts[location['label']] = {}
 
-                alerts[location['label']].append({
-                    'fuel': fuel,
-                    'available': True
-                })
+                if 'available' not in alerts[location['label']]:
+                    alerts[location['label']]['available'] = []
+
+                alerts[location['label']]['available'].append(fuel)
 
             locations_status[location_id][fuel] = True
 
@@ -145,12 +145,12 @@ def create_alerts(config: Dict[str, Any]) -> Dict[str, List[Alert]]:
                 logging.info(f'  {fuel} devenu indisponible')
 
                 if location['label'] not in alerts:
-                    alerts[location['label']] = []
+                    alerts[location['label']] = {}
 
-                alerts[location['label']].append({
-                    'fuel': fuel,
-                    'available': False
-                })
+                if 'unavailable' not in alerts[location['label']]:
+                    alerts[location['label']]['unavailable'] = []
+
+                alerts[location['label']]['unavailable'].append(fuel)
 
             locations_status[location_id][fuel] = False
 
@@ -194,7 +194,13 @@ def save_locations_status(statuses: Dict[str, Dict[str, bool]]) -> None:
         json.dump(statuses, f)
 
 
-def send_sms(alerts_config: Dict[str, Any], message: str) -> None:
+def alerts_to_message(alerts: Dict[str, Alerts]) -> str:
+    pass
+
+
+def send_sms(alerts_config: Dict[str, Any], message: str, dry_run: bool = True) -> None:
+    logging.info('Envoi du SMS...')
+
     urlopen(Request(
         'https://api.smspartner.fr/v1/send',
         data=json.dumps({
@@ -202,6 +208,7 @@ def send_sms(alerts_config: Dict[str, Any], message: str) -> None:
             'phoneNumbers': alerts_config['recipients'].join(','),
             'message': message,
             'sender': alerts_config.get('sender', 'AlerteCarbu'),
+            'sandbox': int(dry_run),
             '_format': 'json',
         }).encode('utf-8'),
         method='POST'
@@ -215,7 +222,7 @@ def run() -> None:
 
     arg_parser.add_argument(
         '--dry-run',
-        help='Do not actually send any SMS',
+        help='Ne pas envoyer de SMS (mode sandbox)',
         action='store_true'
     )
 
@@ -223,12 +230,18 @@ def run() -> None:
 
     config = load_config()
 
-    alerts = create_alerts(config)
+    alerts = create_alerts(config.get('locations'))
 
-    print(alerts) # TODO Passer sur available et unavailable dans un dict au lieu d'une liste
+    if alerts:
+        send_sms(
+            config.get('alerts'),
+            alerts_to_message(alerts),
+            args.dry_run
+        )
 
-    logging.info('Effectué.')
-
+        logging.info('Effectué.')
+    else:
+        logging.info('Aucune alerte à envoyer.')
 
 if __name__ == '__main__':
     run()
