@@ -48,7 +48,7 @@ def load_config() -> Dict[str, Any]:
             raise ValueError('Pas d\'entrée "recipients" dans la section "alerts" de la configuration')
         elif not isinstance(config.get('locations'), dict):
             raise ValueError('Pas d\'entrées "locations" dans la configuration')
-        elif 'sender' in config['alerts'] and re.matchall(r'[a-z0-9]{3,11}', config['alerts']['sender']) is None:
+        elif 'sender' in config['alerts'] and re.fullmatch(r'[a-z0-9]{3,11}', config['alerts']['sender']) is None:
             raise ValueError('"sender" invalide dans la section "alerts" : doit être composé de 3 à 11 caractères exclusivement alphanumériques')
     except ValueError as e:
         logging.critical(f'{e} (abandon)')
@@ -202,21 +202,21 @@ def alerts_to_message(alerts: Dict[str, Alerts]) -> str:
     message = []
 
     for location_name, availabilities in alerts.items():
-        location_message = f'{location_name} ::br:'
+        location_message = f'- {location_name} ::br:'
 
         if 'unavailable' in availabilities:
-            location_message += '  Indispo : {}:br:'.format(
+            location_message += 'Indispo : {}'.format(
                 ', '.join(availabilities['unavailable'])
             )
 
         if 'available' in availabilities:
-            location_message += '  Dispo : {}:br:'.format(
+            location_message += 'Dispo : {}'.format(
                 ', '.join(availabilities['available'])
             )
 
         message.append(location_message)
 
-    return ':br:'.join(message)
+    return ':br::br:'.join(message)
 
 
 def send_sms(alerts_config: Dict[str, Any], message: str, dry_run: bool = True) -> None:
@@ -226,7 +226,7 @@ def send_sms(alerts_config: Dict[str, Any], message: str, dry_run: bool = True) 
         'https://api.smspartner.fr/v1/send',
         data=json.dumps({
             'apiKey': alerts_config['smspartner_api_key'],
-            'phoneNumbers': alerts_config['recipients'].join(','),
+            'phoneNumbers': ','.join(alerts_config['recipients']),
             'message': message,
             'sender': alerts_config.get('sender', 'AlerteCarbu'),
             'sandbox': int(dry_run),
