@@ -127,6 +127,7 @@ def create_alerts(locations_config: Dict[str, Any]) -> Dict[str, Alerts]:
                     alerts[location['label']]['available'] = []
 
                 alerts[location['label']]['available'].append(fuel)
+                alerts[location['label']]['available'].sort()
 
             locations_status[location_id][fuel] = True
 
@@ -151,12 +152,15 @@ def create_alerts(locations_config: Dict[str, Any]) -> Dict[str, Alerts]:
                     alerts[location['label']]['unavailable'] = []
 
                 alerts[location['label']]['unavailable'].append(fuel)
+                alerts[location['label']]['unavailable'].sort()
 
             locations_status[location_id][fuel] = False
 
     save_locations_status(locations_status)
 
-    return alerts
+    return dict(
+        sorted(alerts.items())
+    )
 
 
 def load_locations_status() -> Dict[str, Dict[str, bool]]:
@@ -195,7 +199,24 @@ def save_locations_status(statuses: Dict[str, Dict[str, bool]]) -> None:
 
 
 def alerts_to_message(alerts: Dict[str, Alerts]) -> str:
-    pass
+    message = []
+
+    for location_name, availabilities in alerts.items():
+        location_message = f'{location_name} ::br:'
+
+        if 'unavailable' in availabilities:
+            location_message += '  Indispo : {}:br:'.format(
+                ', '.join(availabilities['unavailable'])
+            )
+
+        if 'available' in availabilities:
+            location_message += '  Dispo : {}:br:'.format(
+                ', '.join(availabilities['available'])
+            )
+
+        message.append(location_message)
+
+    return ':br:'.join(message)
 
 
 def send_sms(alerts_config: Dict[str, Any], message: str, dry_run: bool = True) -> None:
@@ -222,11 +243,14 @@ def run() -> None:
 
     arg_parser.add_argument(
         '--dry-run',
-        help='Ne pas envoyer de SMS (mode sandbox)',
+        help='Ne pas vraiment envoyer de SMS (mode sandbox)',
         action='store_true'
     )
 
     args = arg_parser.parse_args()
+
+    if args.dry_run:
+        logging.info('Mode sandbox activé')
 
     config = load_config()
 
