@@ -11,7 +11,7 @@ sender = "MesAlertes" # Optionel : nom de l'expéditeur du SMS (par défaut "Ale
 
 # Le numéro est l'identifiant du point de vente sur le site www.prix-carburants.gouv.fr
 [locations.67600003]
-label = "Leclerc autoroute" # Libellé le plus court possible
+label = "Leclerc autoroute" # Libellé le plus court possible car utilisé dans les SMS
 
 # Liste des carburants à surveiller pour ce point de vente. Autres valeurs : Gazole, E10, SP95, SP98
 # A adapter évidemment en fonction de ce qui est disponible dans le point de vente
