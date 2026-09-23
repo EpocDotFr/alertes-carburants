@@ -4,6 +4,7 @@
 [alerts]
 smspartner_api_key = "clef-api" # Clef API SMS Partner
 recipients = ["+33612345678", "+33698745632"] # Liste des numéros destinataires des alertes, au format E.164
+sender = "" # Optionel : nom de l'expéditeur du SMS (par défaut "AlerteCarbu"). Entre 3 et 11 caractères alphanumériques
 
 # ----------------------------------------------------------------
 # Configuration des points de vente à surveiller
@@ -11,8 +12,12 @@ recipients = ["+33612345678", "+33698745632"] # Liste des numéros destinataires
 # Le numéro est l'identifiant du point de vente sur le site prix-carburants.gouv.fr
 [locations.67600003]
 label = "Leclerc autoroute" # Libellé le plus court possible
-fuels = ["GPLc", "E85"] # Liste des carburants à surveiller pour ce point de vente. Autres valeurs : Gazole, E10, SP95, SP98
 
+# Liste des carburants à surveiller pour ce point de vente. Autres valeurs : Gazole, E10, SP95, SP98
+# A adapter évidemment en fonction de ce qui est disponible dans le point de vente
+fuels = ["GPLc", "E85"]
+
+# Un autre point de vente
 [locations.67600006]
 label = "Intermarché"
 fuels = ["E85"]
