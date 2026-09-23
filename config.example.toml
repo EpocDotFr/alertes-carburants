@@ -4,7 +4,7 @@
 [alerts]
 smspartner_api_key = "clef-api" # Clef API SMS Partner
 recipients = ["+33612345678", "+33698745632"] # Liste des numéros destinataires des alertes, au format E.164
-sender = "" # Optionel : nom de l'expéditeur du SMS (par défaut "AlerteCarbu"). Entre 3 et 11 caractères alphanumériques
+sender = "MesAlertes" # Optionel : nom de l'expéditeur du SMS (par défaut "AlerteCarbu"). Entre 3 et 11 caractères alphanumériques
 
 # ----------------------------------------------------------------
 # Configuration des points de vente à surveiller
