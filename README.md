@@ -2,11 +2,7 @@
 
 Script Python qui alerte via SMS des disponibilités de carburants.
 
-Seulement pour la France, désolé. A l'origine, je l'ai créé afin d'arrêter de me retrouver devant la pompe GPL qui est
-hors-service (là où je vis, ces pompes ne semblent pas être très fiables). De toute évidence, au vu de la situation
-mondiale actuelle, l'utilité de ce script n'est plus à prouver.
-
-[Article de blog associé](https://epoc.fr)
+Seulement pour la France, désolé. [Article de blog associé](https://epoc.fr)
 
 ## Prérequis
 
