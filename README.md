@@ -7,7 +7,7 @@ Seulement pour la France, désolé. [Article de blog associé](https://epoc.fr)
 ## Prérequis
 
   - Python >= 3.11
-  - Un compte [SMS Partner](https://www.smspartner.fr/) ainsi qu'une [clef API](https://www.docpartner.dev/api/sms-partner) valide
+  - Un compte [SMS Partner](https://www.smspartner.fr/) avec suffisamment de crédits SMS, ainsi qu'une [clef API](https://www.docpartner.dev/api/sms-partner) valide
 
 ## Installation
 
