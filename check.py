@@ -43,10 +43,10 @@ def load_config() -> Dict[str, Any]:
         if not isinstance(config.get('smspartner_api_key'), str):
             raise ValueError('Pas d\'entrée "smspartner_api_key" dans la configuration')
         elif not isinstance(config.get('recipients'), list):
-            raise ValueError('Pas d\'entrée "recipients" dans la configuration')
+            raise ValueError('Pas d\'entrée "recipients" dans la configuration (doit être une liste de strings)')
         elif not isinstance(config.get('locations'), dict):
             raise ValueError('Pas d\'entrées "locations" dans la configuration')
-        elif isinstance(config.get('sender'), str) and re.fullmatch(r'[a-z0-9]{3,11}', config['sender']) is None:
+        elif config.get('sender') is not None and (not isinstance(config.get('sender'), str) or re.fullmatch(r'[a-z0-9]{3,11}', config['sender']) is None):
             raise ValueError('"sender" invalide dans la configuration : doit être composé de 3 à 11 caractères exclusivement alphanumériques')
     except ValueError as e:
         logging.critical(f'{e} (abandon)')
@@ -54,17 +54,14 @@ def load_config() -> Dict[str, Any]:
         sys.exit(1)
 
     for location_id, location in config['locations'].items():
-        label = location.get('label')
-        fuels = location.get('fuels')
-
         try:
-            if not isinstance(label, str):
+            if not isinstance(location.get('label'), str):
                 raise ValueError('"label" manquant ou invalide (doit être un string)')
-            elif not isinstance(fuels, list):
+            elif not isinstance(location.get('fuels'), list):
                 raise ValueError('"fuels" manquant ou invalide (doit être une liste de strings)')
 
             try:
-                location['fuels'] = [Fuel(fuel) for fuel in fuels]
+                location['fuels'] = [Fuel(fuel) for fuel in location.get('fuels')]
             except ValueError:
                 raise ValueError('Une des valeurs de "fuels" est invalide')
         except ValueError as e:
@@ -98,7 +95,7 @@ def create_alerts(locations_config: Dict[str, Any]) -> Dict[str, Alerts]:
 
         logging.info(f'Vérification de {location_id}...')
 
-        location = locations_config[location_id]
+        location_config = locations_config[location_id]
         statuses = locations_status.get(location_id, {})
 
         if location_id not in locations_status:
@@ -107,7 +104,7 @@ def create_alerts(locations_config: Dict[str, Any]) -> Dict[str, Alerts]:
         for available_fuel_node in location_node.iter('prix'):
             fuel = available_fuel_node.get('nom', '')
 
-            if fuel not in location['fuels']:
+            if fuel not in location_config['fuels']:
                 try:
                     del locations_status[location_id][fuel]
                 except KeyError:
@@ -118,21 +115,21 @@ def create_alerts(locations_config: Dict[str, Any]) -> Dict[str, Alerts]:
             if not statuses.get(fuel, True): # Le carburant était indisponible, et est maintenant disponible
                 logging.info(f'  {fuel} devenu disponible')
 
-                if location['label'] not in alerts:
-                    alerts[location['label']] = {}
+                if location_config['label'] not in alerts:
+                    alerts[location_config['label']] = {}
 
-                if 'available' not in alerts[location['label']]:
-                    alerts[location['label']]['available'] = []
+                if 'available' not in alerts[location_config['label']]:
+                    alerts[location_config['label']]['available'] = []
 
-                alerts[location['label']]['available'].append(fuel)
-                alerts[location['label']]['available'].sort()
+                alerts[location_config['label']]['available'].append(fuel)
+                alerts[location_config['label']]['available'].sort()
 
             locations_status[location_id][fuel] = True
 
         for unavailable_fuel_node in location_node.iter('rupture'):
             fuel = unavailable_fuel_node.get('nom', '')
 
-            if unavailable_fuel_node.get('type') == 'definitive' or fuel not in location['fuels']:
+            if unavailable_fuel_node.get('type') == 'definitive' or fuel not in location_config['fuels']:
                 try:
                     del locations_status[location_id][fuel]
                 except KeyError:
@@ -143,14 +140,14 @@ def create_alerts(locations_config: Dict[str, Any]) -> Dict[str, Alerts]:
             if statuses.get(fuel, True): # Le carburant était disponible, et est maintenant indisponible
                 logging.info(f'  {fuel} devenu indisponible')
 
-                if location['label'] not in alerts:
-                    alerts[location['label']] = {}
+                if location_config['label'] not in alerts:
+                    alerts[location_config['label']] = {}
 
-                if 'unavailable' not in alerts[location['label']]:
-                    alerts[location['label']]['unavailable'] = []
+                if 'unavailable' not in alerts[location_config['label']]:
+                    alerts[location_config['label']]['unavailable'] = []
 
-                alerts[location['label']]['unavailable'].append(fuel)
-                alerts[location['label']]['unavailable'].sort()
+                alerts[location_config['label']]['unavailable'].append(fuel)
+                alerts[location_config['label']]['unavailable'].sort()
 
             locations_status[location_id][fuel] = False
 
