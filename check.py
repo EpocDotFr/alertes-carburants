@@ -40,16 +40,14 @@ def load_config() -> Dict[str, Any]:
         sys.exit(1)
 
     try:
-        if not isinstance(config.get('alerts'), dict):
-            raise ValueError('Pas de section "alerts" dans la configuration')
-        elif not isinstance(config['alerts'].get('smspartner_api_key'), str):
-            raise ValueError('Pas d\'entrée "smspartner_api_key" dans la section "alerts" de la configuration')
-        elif not isinstance(config['alerts'].get('recipients'), list):
-            raise ValueError('Pas d\'entrée "recipients" dans la section "alerts" de la configuration')
+        if not isinstance(config.get('smspartner_api_key'), str):
+            raise ValueError('Pas d\'entrée "smspartner_api_key" dans la configuration')
+        elif not isinstance(config.get('recipients'), list):
+            raise ValueError('Pas d\'entrée "recipients" dans la configuration')
         elif not isinstance(config.get('locations'), dict):
             raise ValueError('Pas d\'entrées "locations" dans la configuration')
-        elif 'sender' in config['alerts'] and re.fullmatch(r'[a-z0-9]{3,11}', config['alerts']['sender']) is None:
-            raise ValueError('"sender" invalide dans la section "alerts" : doit être composé de 3 à 11 caractères exclusivement alphanumériques')
+        elif isinstance(config.get('sender'), str) and re.fullmatch(r'[a-z0-9]{3,11}', config['sender']) is None:
+            raise ValueError('"sender" invalide dans la configuration : doit être composé de 3 à 11 caractères exclusivement alphanumériques')
     except ValueError as e:
         logging.critical(f'{e} (abandon)')
 
@@ -219,16 +217,16 @@ def alerts_to_message(alerts: Dict[str, Alerts]) -> str:
     return ':br::br:'.join(message)
 
 
-def send_sms(alerts_config: Dict[str, Any], message: str, dry_run: bool = True) -> None:
+def send_sms(config: Dict[str, Any], message: str, dry_run: bool = True) -> None:
     logging.info('Envoi du SMS...')
 
     urlopen(Request(
         'https://api.smspartner.fr/v1/send',
         data=json.dumps({
-            'apiKey': alerts_config['smspartner_api_key'],
-            'phoneNumbers': ','.join(alerts_config['recipients']),
+            'apiKey': config['smspartner_api_key'],
+            'phoneNumbers': ','.join(config['recipients']),
             'message': message,
-            'sender': alerts_config.get('sender', 'AlerteCarbu'),
+            'sender': config.get('sender', 'AlerteCarbu'),
             'sandbox': int(dry_run),
             '_format': 'json',
         }).encode('utf-8'),
@@ -258,7 +256,7 @@ def run() -> None:
 
     if alerts:
         send_sms(
-            config.get('alerts'),
+            config,
             alerts_to_message(alerts),
             args.dry_run
         )
