@@ -13,8 +13,8 @@ Seulement pour la France, désolé. [Article de blog associé](https://epoc.fr)
 
 Clonez ce dépôt quelque part.
 
-Aussi, vous pourriez télécharger seulement `check.py` si vous ne voulez pas vous embêter avec Git car tout est intégré
-dans ce script (regarde maman, sans dépendances !).
+Aussi, vous pourriez télécharger seulement `check.py` si vous ne voulez pas vous embêter avec Git car ce script est
+autonome (regarde maman, sans dépendances !).
 
 ## Configuration
 
