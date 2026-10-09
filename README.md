@@ -2,7 +2,7 @@
 
 Script Python qui alerte via SMS des disponibilités de carburants.
 
-Seulement pour la France, désolé. [Article de blog associé](https://epoc.fr)
+Seulement pour la France, désolé. [Article de blog associé](https://epoc.fr/developpement/alertes-de-disponibilite-de-carburants-par-sms)
 
 ## Prérequis
 
